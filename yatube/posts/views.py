@@ -49,14 +49,20 @@ def profile(request, username) -> HttpResponse:
     author = get_object_or_404(User, username=username)
     post_list = (
         Post.objects
-            .filter(author=author)
-            .select_related('group', 'author')
-            .order_by('-created')
+        .filter(author=author)
+        .select_related('group', 'author')
+        .order_by('-created')
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
-    following = Follow.objects.filter(
-        user=request.user, author=author).exists()
+    if request.user is True:
+        following = (
+            Follow.objects
+            .filter(user=request.user, author=author)
+            .exists()
+        )
+    else:
+        following = False
     context = {
         'author': author,
         'page_obj': page_obj,
@@ -137,9 +143,9 @@ def add_comment(request, post_id):
 def follow_index(request):
     my_authors = (
         Post.objects
-            .filter(author__following__user=request.user)
-            .select_related('author', 'group')
-            .order_by('-created')
+        .filter(author__following__user=request.user)
+        .select_related('author', 'group')
+        .order_by('-created')
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, my_authors)
