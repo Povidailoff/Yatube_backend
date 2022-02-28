@@ -55,13 +55,13 @@ def profile(request, username) -> HttpResponse:
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
-    if request.user is True:
+    try:
         following = (
             Follow.objects
             .filter(user=request.user, author=author)
             .exists()
         )
-    else:
+    except:
         following = False
     context = {
         'author': author,
@@ -110,7 +110,7 @@ def post_edit(request, post_id):
     '''Функция для редактирования существующих постов'''
     post = get_object_or_404(Post, pk=post_id)
     if post.author != request.user:
-        return redirect('posts:post_detail', post_id=post_id)
+        return redirect('posts:post_detail', post_id)
     form = PostForm(
         request.POST or None,
         files=request.FILES or None,
@@ -125,6 +125,15 @@ def post_edit(request, post_id):
         'is_edit': True,
     }
     return render(request, 'posts/create_post.html', context)
+
+
+@login_required
+def post_delete(request, post_id):
+    post = get_object_or_404(Post, pk=post_id)
+    if post.author == request.user:
+        post.delete()
+
+    return redirect('posts:profile', request.user)
 
 
 @login_required

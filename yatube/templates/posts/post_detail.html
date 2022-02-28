@@ -42,6 +42,9 @@
       <a href="{% url 'posts:post_edit' post.pk %}">
         Редактировать
       </a>
+      <a href="{% url 'posts:post_delete' post.pk %}">
+        Удалить
+      </a>
     {% endif %}
   </article>
 </div>
