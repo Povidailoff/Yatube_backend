@@ -16,8 +16,10 @@ def pagin_obj(page, objects, pst_per_pg=PST_PER_PG):
 
 def index(request) -> HttpResponse:
     '''Функция выводит на главную последние посты'''
-    post_list = (Post.objects.select_related(
-        'group').select_related('author').order_by('-created')
+    post_list = (
+        Post.objects
+        .select_related('group', 'author')
+        .order_by('-created')
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
@@ -30,9 +32,9 @@ def index(request) -> HttpResponse:
 def group_posts(request, slug) -> HttpResponse:
     '''Функция выводит последние посты выбранного сообщества'''
     group = get_object_or_404(Group, slug=slug)
-    post_list = (group.posts.select_related('group').
-                 select_related('author').order_by('-created')
-                 )
+    post_list = (
+        group.posts.select_related('group', 'author').order_by('-created')
+    )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
     context = {
@@ -46,18 +48,19 @@ def profile(request, username) -> HttpResponse:
     '''Функция просмотра постов пользователя'''
     author = get_object_or_404(User, username=username)
     post_list = (
-        Post.objects.select_related(
-            'group').order_by('-created').select_related(
-            'author').filter(author=author)
+        Post.objects
+            .filter(author=author)
+            .select_related('group', 'author')
+            .order_by('-created')
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
     following = Follow.objects.filter(
-        user=request.user.pk).filter(author=author).exists()
+        user=request.user, author=author).exists()
     context = {
         'author': author,
         'page_obj': page_obj,
-        'following': following
+        'following': following,
     }
     return render(request, 'posts/profile.html', context)
 
@@ -132,15 +135,16 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    my_authors = Follow.objects.values_list('author').filter(user=request.user)
-    post_list = (
-        Post.objects.filter(author__in=my_authors)
-        .order_by('-created').select_related('author').select_related('group')
+    my_authors = (
+        Post.objects
+            .filter(author__following__user=request.user)
+            .select_related('author', 'group')
+            .order_by('-created')
     )
     page_number = request.GET.get('page')
-    page_obj = pagin_obj(page_number, post_list)
+    page_obj = pagin_obj(page_number, my_authors)
     context = {
-        'page_obj': page_obj
+        'page_obj': page_obj,
     }
     return render(request, 'posts/follow.html', context)
 
@@ -148,12 +152,9 @@ def follow_index(request):
 @login_required
 def profile_follow(request, username):
     # Подписаться на автора
-    author = User.objects.get(username=username)
-    favour = Follow.objects.filter(user=request.user).filter(author=author)
-    if favour.exists():
-        return redirect('posts:profile', username)
+    author = get_object_or_404(User, username=username)
     if request.user != author:
-        Follow.objects.create(
+        Follow.objects.get_or_create(
             user=request.user,
             author=author
         )
@@ -163,25 +164,8 @@ def profile_follow(request, username):
 @login_required
 def profile_unfollow(request, username):
     # Дизлайк, отписка
-    author = User.objects.get(username=username)
-    favour = Follow.objects.filter(user=request.user).filter(author=author)
+    author = get_object_or_404(User, username=username)
+    favour = Follow.objects.filter(user=request.user, author=author)
     if favour.exists():
         favour.delete()
     return redirect('posts:profile', username)
-
-# class PostCreate(LoginRequiredMixin, CreateView):
-#    template_name = 'posts/create_post.html'
-#    model = Post
-#    form_class = PostForm
-#    success_url = reverse_lazy('posts:index')
-#
-#    def form_valid(self, form):
-#        form.instance.author = self.request.user
-#        return super().form_valid(form)
-
-
-# class PostEdit(LoginRequiredMixin, UpdateView):
-#    template_name = 'posts/create_post.html'
-#    model = Post
-#    form_class = PostForm
-#    success_url = reverse_lazy('posts:post_detail')

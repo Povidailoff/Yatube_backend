@@ -170,23 +170,48 @@ class PostsViewsTests(PostsSetup):
 
     def test_following_system(self):
         '''Тестируем, что пользователь может
-           подписываться и отписываться от
-           авторов.
+           подписываться на авторов
         '''
         User.objects.create_user('Author')
         self.authorized_client.post(
             reverse('posts:profile_follow', kwargs={'username': 'Author'})
         )
         self.assertEqual(Follow.objects.count(), 1)
+
+    def test_unfollowing_system(self):
+        '''Тестируем, что пользователь может
+           отписываться от авторов
+        '''
+        Author = User.objects.create_user('Author')
+        Follow.objects.create(
+            user=self.user,
+            author=Author
+        )
         self.authorized_client.post(
             reverse('posts:profile_unfollow', kwargs={'username': 'Author'})
         )
         self.assertEqual(Follow.objects.count(), 0)
 
-    def test_following_page(self):
+    def test_follow_follower_page(self):
         '''Тестируем корректность появления
            постов для подписчиков
         '''
+        Author = User.objects.create_user('Author')
+        Post.objects.create(
+            author=Author,
+            text='Текстовый текст'
+        )
+        Follow.objects.create(
+            user=self.user,
+            author=Author
+        )
+        response = self.authorized_client.get(
+            reverse('posts:follow_index')
+        )
+        self.assertEqual(len(response.context['page_obj']), 1)
+
+    def test_follow_unfollower_page(self):
+        '''Тестируется, что посты не появляются в ленте без подписки'''
         Author = User.objects.create_user('Author')
         Post.objects.create(
             author=Author,
@@ -200,10 +225,6 @@ class PostsViewsTests(PostsSetup):
             user=self.user,
             author=Author
         )
-        response = self.authorized_client.get(
-            reverse('posts:follow_index')
-        )
-        self.assertEqual(len(response.context['page_obj']), 1)
 
 
 class PaginatorViewsTest(TestCase):
@@ -229,6 +250,11 @@ class PaginatorViewsTest(TestCase):
                 group=cls.group,
             )
 
+    def setUp(self):
+        # Создаем авторизованный клиент
+        self.authorized_client = Client()
+        self.authorized_client.force_login(self.user)
+
     pages_with_paginator = {
         reverse('posts:index'): 'posts/index.html',
         reverse('posts:group_posts', kwargs={'slug': 'test-slug'}):
@@ -241,14 +267,14 @@ class PaginatorViewsTest(TestCase):
         """Тестируем первую страницу паджинатора"""
         for view in self.pages_with_paginator.keys():
             with self.subTest(view=view):
-                response = self.client.get(view)
+                response = self.authorized_client.get(view)
                 self.assertEqual(len(response.context['page_obj']), PST_PER_PG)
 
     def test_second_page_contains_three_records(self):
         """Тестируем оставшиеся посты"""
         for view in self.pages_with_paginator.keys():
             with self.subTest(view=view):
-                response = self.client.get(view + '?page=2')
+                response = self.authorized_client.get(view + '?page=2')
                 self.assertEqual(len(response.context['page_obj']), 3)
 
     # Дополнительные проверки
@@ -261,10 +287,10 @@ class PaginatorViewsTest(TestCase):
         post_for_change = Post.objects.get(id=1)
         post_for_change.group = self.group2
         post_for_change.save()
-        response = self.client.get(reverse(
+        response = self.authorized_client.get(reverse(
             'posts:group_posts', kwargs={'slug': 'test-slug2'})
         )
-        response2 = self.client.get(reverse(
+        response2 = self.authorized_client.get(reverse(
             'posts:group_posts', kwargs={'slug': 'test-slug'}) + '?page=2'
         )
         self.assertEqual(len(response.context['page_obj']), 1)

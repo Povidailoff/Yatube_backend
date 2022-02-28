@@ -2,8 +2,7 @@
 {% block title %}Последние обновления у избранных авторов{% endblock %}
 {% block header %}Последние обновления у избранных авторов{% endblock %}
 {% load cache %}
-{% block content %} 
-
+{% block content %}
 {% include 'posts/includes/switcher.html' %}
 {% cache 20 favour_page page_obj.number %}
   {% for post in page_obj %}
@@ -12,4 +11,4 @@
   {% endfor %}
 {% endcache %}
 {% include 'includes/paginator.html' %}
-{% endblock %} 
+{% endblock %}
