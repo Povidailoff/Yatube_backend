@@ -61,7 +61,7 @@ def profile(request, username) -> HttpResponse:
             .filter(user=request.user, author=author)
             .exists()
         )
-    except:
+    except TypeError:
         following = False
     context = {
         'author': author,
