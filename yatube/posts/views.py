@@ -55,14 +55,9 @@ def profile(request, username) -> HttpResponse:
     )
     page_number = request.GET.get('page')
     page_obj = pagin_obj(page_number, post_list)
-    try:
-        following = (
-            Follow.objects
-            .filter(user=request.user, author=author)
-            .exists()
-        )
-    except TypeError:
-        following = False
+    following = False
+    if request.user.is_authenticated:
+        following = author.following.exists()
     context = {
         'author': author,
         'page_obj': page_obj,

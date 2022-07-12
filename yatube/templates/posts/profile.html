@@ -1,8 +1,6 @@
 {% extends 'base.html' %}
 {% load thumbnail %}
-{% block title %}
-Профайл пользователя {{ author.first_name }} {{ author.last_name }}
-{% endblock %}
+{% block title %}Профайл пользователя {{ author.get_full_name }}{% endblock %}
 {% block header %}Все посты пользователя {{ author.get_full_name }}{% endblock %}
 {% block content %}      
 <h3>Всего постов: {{ page_obj.paginator.count }} </h3>    
@@ -27,9 +25,6 @@
 </div>
 {% for post in page_obj %}
 {% include 'posts/includes/post.html' %}
-  {% if post.group %}
-    <a href="{% url 'posts:group_posts' post.group.slug %}">все записи группы</a>
-  {% endif %}
   {% if not forloop.last %}<hr>{% endif %}
   {% endfor %}
 {% include 'includes/paginator.html' %}
